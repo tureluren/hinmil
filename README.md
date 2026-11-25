@@ -1926,6 +1926,10 @@ with a returned promise unwrapped (`then (x => fetchNext (x))` gives
 | `slice` | `(Number \| Undefined, Number \| Undefined) -> [a]` |
 | `join` | `(String \| Undefined) -> String` |
 | `reverse` | `[a]` |
+| `toReversed` | `() -> [a]` |
+| `toSorted` | `(((a, a) -> Number) \| Undefined) -> [a]` |
+| `toSpliced` | `(Number \| Undefined, Number \| Undefined) -> [a]` (both arguments optional, with overloads for up to three items of type `a`) |
+| `with` | `(Number, a) -> [a]` |
 | `length` | `Number` (property) |
 | ... | and more |
 
