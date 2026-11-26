@@ -3,6 +3,17 @@
 All notable changes to HinMil are listed here. The project follows
 [semantic versioning](https://semver.org/).
 
+## 0.2.2 — 2026-11-26
+
+### Fixed
+
+- A wrong annotation on a value that reads a member of a callback parameter
+  is now reported. `// xs :: [String]` above
+  `const xs = map ((s) => s.length) (["Ada"])` (with
+  `map :: Functor f => (a -> b) -> f a -> f b`) was accepted; it now gives
+  "Cannot unify 'Number' with 'String'" at `length`. The same holds for an
+  immediately applied callback and a later call that expects another type.
+
 ## 0.2.1 — 2026-11-26
 
 ### Fixed

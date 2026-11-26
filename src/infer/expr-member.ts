@@ -41,6 +41,9 @@ import {
   T_ARRAY,
   T_ERROR,
   T_TYPEREP,
+  T_MERGE,
+  T_PICKED,
+  T_SPREAD_ARRAY,
   isUnion,
 } from '../hm/types';
 import { TypeEnv, instantiate, generalize } from '../hm/env';
@@ -60,6 +63,7 @@ import {
   removeNullUndefined,
 } from './narrowing';
 import { freshVars} from './helpers';
+import { someType } from '../hm/typeUtils';
 import {
   resolveKvConstraintNames,
   collectAllKvConstraintNames,
@@ -410,6 +414,7 @@ function inferMemberExpressionRaw(engine: InferenceEngine, node: estree.MemberEx
       propName,
       resultType: suppressed,
       propStart: node.property.start,
+      node: node.property,
     });
     return suppressed;
   }
@@ -1270,6 +1275,13 @@ function recordSuppressedProperty(
  * Resolution is strictly additive: lookup misses and unification failures
  * are swallowed, preserving the previous silent behavior.
  */
+const APPROXIMATING_CONS = new Set<string>([T_UNION, T_MERGE, T_PICKED, T_SPREAD_ARRAY]);
+
+/** True if `t` contains a union, an overload set or a type operator. */
+function hasApproximation(t: Type): boolean {
+  return someType(t, (n) => n.tag === 'TCon' && APPROXIMATING_CONS.has(n.name));
+}
+
 export function flushDeferredMemberAccesses(engine: InferenceEngine): void {
   if (engine.deferredMemberAccesses.length === 0) return;
   const remaining: typeof engine.deferredMemberAccesses = [];
@@ -1293,13 +1305,25 @@ export function flushDeferredMemberAccesses(engine: InferenceEngine): void {
       }
     }
     if (memberType) {
+      const member = engine.resolve(memberType);
+      const demanded = engine.resolve(entry.resultType);
       try {
-        const s = unify(engine.resolve(memberType), engine.resolve(entry.resultType));
-        engine.subst.mergeFrom(s);
-        engine.unconstrainedPropAccesses.delete(entry.propStart);
+        engine.subst.mergeFrom(unify(member, demanded));
       } catch (e) {
         if (!(e instanceof UnificationError)) throw e;
+        // The receiver is known now, so the member's real type must agree
+        // with what the code already demanded of the placeholder (an
+        // annotation, a later call): `// xs :: [String]` above
+        // `map (s => s.length) (["a"])`.  Report a clash between plain types.
+        // A union, an overload set or a type operator on either side usually
+        // comes from an approximation elsewhere (a heterogeneous array
+        // literal, `str.split`'s String/RegExp overloads, `Merge p q`), so
+        // that clash stays silent, as before.
+        if (!hasApproximation(member) && !hasApproximation(demanded)) {
+          engine.unifyWithDiagnostic(member, demanded, entry.node);
+        }
       }
+      engine.unconstrainedPropAccesses.delete(entry.propStart);
     }
     // Concrete receiver — entry is consumed either way; a missing member
     // keeps the established silent (suppressed-hover) behavior.

@@ -1,7 +1,7 @@
 {
   "name": "hinmil",
   "displayName": "HinMil — Hindley-Milner for JavaScript",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Hindley-Milner type checking for plain JavaScript: type signatures in comments, no build step",
   "publisher": "hinmil",
   "icon": "images/icon.png",

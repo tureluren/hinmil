@@ -419,7 +419,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
     },
     serverInfo: {
       name: 'hinmil',
-      version: '0.2.1',
+      version: '0.2.2',
     },
   };
 });

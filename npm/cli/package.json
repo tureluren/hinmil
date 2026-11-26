@@ -1,6 +1,6 @@
 {
   "name": "hinmil",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Hindley-Milner type checking for plain JavaScript: type signatures in comments, no build step. Command-line checker and language server",
   "license": "MIT",
   "author": "Rafael Tureluren",

@@ -73,9 +73,10 @@ How it compares to the other ways of getting types into JavaScript:
 
 - A package without HM annotations is `Any`, and `Any` fits everywhere. A
   check is only as strict as the types it can see.
-- Inference is strongest on functions and records. A method call on an
-  unannotated parameter (`items => items.reduce (…)`) stays open, so annotate
-  the functions you export.
+- Inference is strongest on functions and records. A method call or field
+  read on an unannotated parameter (`items => items.reduce (…)`,
+  `(o) => o.total`) stays open until the argument is known, so annotate the
+  functions you export.
 - HinMil checks; it never changes or emits code. It is young, has one
   maintainer, and the editor integration is VS Code only.
 

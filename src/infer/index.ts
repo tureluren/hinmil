@@ -344,7 +344,7 @@ export class InferenceEngine implements DiagnosticSink, TypeResolutionContext, N
    *  arriving AFTER the callback), the member is looked up again and its
    *  type is unified with the placeholder result var — so `s => s.length`
    *  resolves to `String -> Number` instead of staying `s -> b`. */
-  deferredMemberAccesses: Array<{ objType: Type; propName: string; resultType: Type; propStart: number }> = [];
+  deferredMemberAccesses: Array<{ objType: Type; propName: string; resultType: Type; propStart: number; node: AstNode }> = [];
   /** @internal Set of `TypeName#propName` for properties assigned via `this.prop = ...` in constructors. */
   constructorProperties = new Set<string>();
   /** @internal Map of `TypeName##privateName` -> Type for private class fields and methods. */
