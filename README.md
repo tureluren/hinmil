@@ -29,10 +29,11 @@ narrowing. The sections below cover all of it.
 
 ## Why HinMil?
 
-If you already write Hindley-Milner signatures in your comments, as the
-documentation of Ramda, Sanctuary, Fluture and fantasy-land does, HinMil
-turns them into checked types. Your code stays plain JavaScript that runs as
-it is.
+Hindley-Milner signatures are the notation the documentation of Ramda,
+Sanctuary, Fluture and fantasy-land uses: one line that says what a function
+takes and gives back. HinMil turns them into checked types. Write them in
+comments above your functions and your code stays plain JavaScript that runs
+as it is.
 
 ```javascript
 // ::constraint Functor f { f :: { map :: f a ~> (a -> b) -> f b } }
@@ -80,11 +81,35 @@ How it compares to the other ways of getting types into JavaScript:
 - HinMil checks; it never changes or emits code. It is young, has one
   maintainer, and the editor integration is VS Code only.
 
+### A dialect of Hindley-Milner
+
+The notation comes from Haskell, but Haskell has no `null`, no methods, no
+objects and no functions that take several arguments at once. JavaScript
+has all of them. HinMil's signatures are therefore a dialect: the familiar
+core (`a -> b`, `[a]`, `Maybe a`, `Functor f =>`) plus notation for what
+only JavaScript has.
+
+| JavaScript | Haskell | HinMil |
+|---|---|---|
+| `(amount, rate) => …`, several arguments at once | every function takes one argument | `(Number, Number) -> Number`; curried stays `Number -> Number -> Number` ([Calling Convention](#calling-convention)) |
+| `["Coffee", 3]` | `(String, Int)` | `[String, Number]`: parentheses mean an argument list ([Arrays & Tuples](#arrays--tuples)) |
+| `box.map (f)`, a method on its receiver | functions only | `Box a ~> (a -> b) -> Box b`, the fantasy-land arrow ([Method Annotations](#method-annotations)) |
+| plain objects | data types with fixed fields | structural records `{ name :: String, ...rest }` ([Records](#records--row-polymorphism)) |
+| `null`, `undefined`, untyped packages | `Maybe` | `Null`, `Undefined`, `Any`, unions `Number \| Null` ([Union Types](#union--string-literal-types)) |
+| `"draft"`, `"paid"` as values | no literal types | `'draft' \| 'sent' \| 'paid'` |
+| arrays and objects with a `map` method | `instance Functor Maybe` | structural type classes: `::constraint Functor f { f :: { map :: f a ~> (a -> b) -> f b } }` ([`::constraint`](#constraint--type-classes)) |
+| `class Just { … }`, factory functions | `data Maybe a = Just a \| Nothing` | `Maybe :: Just a \| Nothing` plus a constructor annotation per variant ([Sum Types](#sum-types)) |
+| Ramda functions that take arguments in any grouping, type guards | — | directives such as [`::curried`](#curried--curried-library-functions) and [`::narrow`](#narrow--type-predicates) |
+
+The full list of places where the engine extends or bends textbook
+Hindley-Milner is in [TYPE-SYSTEM.md](TYPE-SYSTEM.md).
+
 ---
 
 ## Table of Contents
 
 - [Why HinMil?](#why-hinmil)
+  - [A dialect of Hindley-Milner](#a-dialect-of-hindley-milner)
 - [Getting Started](#getting-started)
 - [Type Annotations](#type-annotations)
   - [Method Annotations](#method-annotations)
