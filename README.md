@@ -1777,11 +1777,12 @@ bundled builtin  <  inline  <  sidecar  <  companion package  <  project-local o
 A *bundled builtin* is a signature file shipped with the extension itself
 ([hm-types-builtin/](hm-types-builtin/)): `react` and `react-dom`, and the
 Node modules `assert`, `buffer`, `child_process`, `crypto`, `fs`, `http`,
-`os`, `path`, `url` and `zlib` (`node:fs` is the same as `fs`). It is the
+`os`, `path`, `readline`, `url` and `zlib` (`node:fs` is the same as
+`fs`; `node:readline` is the same as `readline`). It is the
 weakest layer, and any package backed by one is *open-world*: importing a
 name no layer declares binds it to `Any` instead of erroring, so an
 outdated bundle can never be worse than no typings. A Node module without
-a bundled file (for example `readline`) gives HM3003; add a project stub
+a bundled file (for example `dns`) gives HM3003; add a project stub
 in `hm-types/<module>.hm` (methods as `Type#method :: Type ~> …`).
 
 A built-in type that has no `Name ::` declaration (such as `ReactElement`)

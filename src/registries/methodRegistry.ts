@@ -1273,6 +1273,7 @@ const processMethods: Record<string, MethodEntry> = {
   env:      { signature: 'Object k String', factory: () => tCon(T_OBJECT, [tLabelVar('k'), tString]) },
   title:    prop(tString,          'String'),
   exitCode: prop(tNumber,          'Number'),
+  stdin:    prop(tAnyType,         'Any'),
   stdout:   { signature: PROCESS_STREAM_SIG, factory: processStreamRecord },
   stderr:   { signature: PROCESS_STREAM_SIG, factory: processStreamRecord },
   // Methods

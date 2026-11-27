@@ -152,3 +152,24 @@ export const unpack = text => gunzipSync (text);
     "src/gunzipBad.js:4:43 error HM1001 Type mismatch: Cannot unify 'String' with 'Buffer'",
   ]);
 });
+
+
+test('readline: default import creates an interface and reads input', () => {
+  expect(lint('readline', `import readline from "readline";
+
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+rl.on("line", (line) => console.log(line));
+rl.question("Your name: ", (answer) => console.log(answer));
+rl.close();
+`)).toEqual([]);
+});
+
+test('negative: readline question callback requires a String prompt', () => {
+  expect(lint('readlineBad', `import { createInterface } from "readline";
+
+const rl = createInterface({ input: process.stdin, output: process.stdout });
+rl.question(123, (answer) => console.log(answer));
+`)).toEqual([
+  "src/readlineBad.js:4:13 error HM1001 Type mismatch: Cannot unify 'Number' with 'String'",
+]);
+});
