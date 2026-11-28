@@ -376,6 +376,30 @@ describe('builtin namespace/type methods — breadth coverage', () => {
     ]))('%s', (_d, c) => runCase(c));
   });
 
+  describe('ES2023 Array copy methods', () => {
+    test.each([
+      ['toSorted((a, b) => a - b)', '[12.5, 9.95, 30]', '[Number]'],
+      ['toSorted()', '["B", "A"]', '[String]'],
+      ['toReversed()', '["A", "B"]', '[String]'],
+      ['toSpliced(1, 1, "C", "D")', '["A", "B"]', '[String]'],
+      ['toSpliced(1)', '["A", "B"]', '[String]'],
+      ['toSpliced()', '["A", "B"]', '[String]'],
+      ['with(-1, 10)', '[12.5, 9.95]', '[Number]'],
+    ])('Array#%s infers the array element type', (call, values, expected) => {
+      const r = engine.infer(`const values = ${values}; const result = values.${call};`);
+      expect(noErr(r)).toEqual([]);
+      expect(prettyTypeToString(r.topLevelBindings.get('result')!.type)).toBe(expected);
+    });
+
+    test.each([
+      ['with("0", 1)', "Cannot unify 'String' with 'Number'"],
+      ['toSorted((a, b) => "first")', "with '(Number, Number) -> String'"],
+    ])('Array#%s reports an argument type error', (call, message) => {
+      const r = engine.infer(`const prices = [12.5, 9.95]; prices.${call};`);
+      expect(noErr(r).map(d => d.message)).toEqual([expect.stringContaining(message)]);
+    });
+  });
+
   describe('Console methods', () => {
     test.each(asEach([
       { desc: 'console.log',   src: 'console.log("hi");' },

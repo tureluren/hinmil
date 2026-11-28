@@ -244,6 +244,10 @@ const arrayMethods: Record<string, MethodEntry> = {
     signature: '[a]',
     factory: (typeArgs) => tArray(elemVar(typeArgs)),
   },
+  toReversed: {
+    signature: '() -> [a]',
+    factory: (typeArgs) => tFun(tVoid, tArray(elemVar(typeArgs))),
+  },
   slice: {
     // JS Array.prototype.slice accepts (), (begin) or (begin, end); `slice ()`
     // is the idiomatic shallow copy.  Both arguments are optional.
@@ -270,12 +274,43 @@ const arrayMethods: Record<string, MethodEntry> = {
       ], { overloadSet: true });
     },
   },
+  toSpliced: {
+    // Match splice's typed insertion overloads and allow a no-argument copy.
+    signature: '(Number | Undefined, Number | Undefined) -> [a]',
+    factory: (typeArgs) => {
+      const a = elemVar(typeArgs);
+      const result = tArray(a);
+      const index = opt(tNumber);
+      return tUnion([
+        tFun(tVoid, result),
+        tFun(index, result),
+        tFun(tTuple([index, index]), result),
+        tFun(tTuple([index, index, a]), result),
+        tFun(tTuple([index, index, a, a]), result),
+        tFun(tTuple([index, index, a, a, a]), result),
+      ], { overloadSet: true });
+    },
+  },
   sort: {
     // The comparator is optional — `arr.sort()` sorts lexicographically.
     signature: '(((a, a) -> Number) | Undefined) -> [a]',
     factory: (typeArgs) => {
       const a = elemVar(typeArgs);
       return tFun(opt(tFun(tTuple([a, a]), tNumber)), tArray(a));
+    },
+  },
+  toSorted: {
+    signature: '(((a, a) -> Number) | Undefined) -> [a]',
+    factory: (typeArgs) => {
+      const a = elemVar(typeArgs);
+      return tFun(opt(tFun(tTuple([a, a]), tNumber)), tArray(a));
+    },
+  },
+  with: {
+    signature: '(Number, a) -> [a]',
+    factory: (typeArgs) => {
+      const a = elemVar(typeArgs);
+      return tFun(tTuple([tNumber, a]), tArray(a));
     },
   },
   fill: {
