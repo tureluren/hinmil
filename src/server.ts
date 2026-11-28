@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // ============================================================================
 // LSP Server — Language Server Protocol entry point
 //
@@ -419,7 +420,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
     },
     serverInfo: {
       name: 'hinmil',
-      version: '0.2.2',
+      version: '0.3.0',
     },
   };
 });

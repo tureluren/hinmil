@@ -1,6 +1,6 @@
 {
   "name": "hinmil",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Hindley-Milner type checking for plain JavaScript: type signatures in comments, no build step. Command-line checker and language server",
   "license": "MIT",
   "author": "Rafael Tureluren",
@@ -15,7 +15,8 @@
   "main": "./dist/services/projectChecker.js",
   "types": "./dist/services/projectChecker.d.ts",
   "bin": {
-    "hinmil": "dist/cli.js"
+    "hinmil": "dist/cli.js",
+    "hinmil-lsp": "dist/server.js"
   },
   "files": [
     "dist/**",

@@ -9,7 +9,7 @@
 // test offline; a full `npm install <tarball>` check needs network access.
 // ============================================================================
 
-import { execFileSync } from 'child_process';
+import { execFileSync, spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -41,6 +41,7 @@ try {
   assert(listing.includes('package/dist/cli.js'), 'dist/cli.js missing from tarball');
   assert(listing.includes('package/dist/services/projectChecker.js'), 'projectChecker.js missing from tarball');
   assert(listing.includes('package/LICENSE'), 'LICENSE missing from tarball');
+  assert(listing.includes('package/dist/server.js'), 'dist/server.js (hinmil-lsp) missing from tarball');
   assert(!listing.includes('package/dist/extension.js'), 'extension client leaked into tarball');
   assert(!/package\/(src|tests|sample|scripts|coverage)\//.test(listing), 'repository sources leaked into tarball');
 
@@ -85,7 +86,24 @@ try {
   assert(errors.length === 1 && errors[0].file.endsWith('bad.js'),
     `expected exactly one error in bad.js, got ${JSON.stringify(output.diagnostics)}`);
 
-  console.log(`tarball-test: PASS (${path.basename(tarball)}, version ${version.stdout.trim()})`);
+  // 5. The language server: `hinmil-lsp` is a bin with a shebang, and it
+  //    answers `initialize` over stdio from the extracted package.
+  const manifest = JSON.parse(fs.readFileSync(path.join(packageDir, 'package.json'), 'utf8')) as { bin: Record<string, string> };
+  assert(manifest.bin['hinmil-lsp'] === 'dist/server.js', `bin hinmil-lsp is ${JSON.stringify(manifest.bin['hinmil-lsp'])}`);
+  assert(fs.readFileSync(path.join(packageDir, 'dist', 'server.js'), 'utf8').startsWith('#!/usr/bin/env node'),
+    'dist/server.js has no shebang');
+  const lsp = spawnSync('node', ['-e', `
+    const { spawn } = require ('child_process');
+    const p = spawn ('node', [${JSON.stringify(path.join(packageDir, 'dist', 'server.js'))}, '--stdio'], { cwd: ${JSON.stringify(project)} });
+    const body = JSON.stringify ({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { processId: null, rootUri: null, capabilities: {} } });
+    let out = '';
+    p.stdout.on ('data', (d) => { out += d; if (out.includes ('"capabilities"')) { console.log (out.includes ('"hoverProvider":true') ? 'ok' : 'no hover'); p.kill (); process.exit (0); } });
+    p.stdin.write ('Content-Length: ' + Buffer.byteLength (body) + '\\r\\n\\r\\n' + body);
+    setTimeout (() => { console.log ('timeout'); p.kill (); }, 15000);
+  `], { cwd: project, encoding: 'utf8', env });
+  assert(lsp.stdout.trim().split('\n').pop() === 'ok', `hinmil-lsp did not answer initialize: ${JSON.stringify(lsp.stdout + lsp.stderr)}`);
+
+  console.log(`tarball-test: PASS (${path.basename(tarball)}, version ${version.stdout.trim()}, hinmil-lsp ok)`);
 } finally {
   fs.rmSync(work, { recursive: true, force: true });
 }

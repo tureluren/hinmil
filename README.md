@@ -6,10 +6,11 @@
 [![License: MIT](https://img.shields.io/github/license/tureluren/hinmil)](LICENSE)
 [![CI](https://github.com/tureluren/hinmil/actions/workflows/ci.yml/badge.svg)](https://github.com/tureluren/hinmil/actions/workflows/ci.yml)
 
-HinMil is a VS Code extension that type-checks plain JavaScript. You write type
-signatures in ordinary comments, and a Hindley-Milner inference engine checks
-your code against them while you type. There is no build step and no
-transpilation — the files stay plain `.js`.
+HinMil type-checks plain JavaScript. You write type signatures in ordinary
+comments, and a Hindley-Milner inference engine checks your code against them
+while you type. There is no build step and no transpilation — the files stay
+plain `.js`. It runs as a VS Code extension, in any editor with an LSP client,
+and as a command-line checker for CI.
 
 ```javascript
 // lineTotal :: (Number, Number) -> Number
@@ -57,7 +58,7 @@ How it compares to the other ways of getting types into JavaScript:
 | Higher-kinded types and type classes (`Functor f =>`) | yes | no, only through encodings | no | no |
 | Sum types | `Maybe :: Just a \| Nothing`, with constructors and narrowing | discriminated unions | as TypeScript | disjoint unions |
 | Types for npm packages | React, Node built-ins, and packages that ship HM annotations; everything else is `Any` | nearly every package (DefinitelyTyped) | as TypeScript | flow-typed, fewer |
-| Editors | VS Code, plus a CLI for CI | every major editor | every major editor | most editors |
+| Editors | VS Code; other editors through LSP; a CLI for CI | every major editor | every major editor | most editors |
 | Maturity | new (0.x) | very mature | very mature | mature, mostly used at Meta |
 
 **When to choose what:**
@@ -78,8 +79,6 @@ How it compares to the other ways of getting types into JavaScript:
   read on an unannotated parameter (`items => items.reduce (…)`,
   `(o) => o.total`) stays open until the argument is known, so annotate the
   functions you export.
-- HinMil checks; it never changes or emits code. It is young, has one
-  maintainer, and the editor integration is VS Code only.
 
 ### A dialect of Hindley-Milner
 
@@ -111,6 +110,7 @@ Hindley-Milner is in [TYPE-SYSTEM.md](TYPE-SYSTEM.md).
 - [Why HinMil?](#why-hinmil)
   - [A dialect of Hindley-Milner](#a-dialect-of-hindley-milner)
 - [Getting Started](#getting-started)
+  - [Other editors](#other-editors)
 - [Type Annotations](#type-annotations)
   - [Method Annotations](#method-annotations)
 - [Hover](#hover)
@@ -217,6 +217,50 @@ Next steps, all optional:
 - **VS Code's built-in TypeScript extension** also analyses JavaScript and
   shows its own hovers and diagnostics next to those of HinMil. See
   [Using HinMil without the built-in TypeScript extension](#using-hinmil-without-the-built-in-typescript-extension).
+
+### Other editors
+
+The editor features come from a language server that speaks plain LSP over
+stdio, so any editor with an LSP client can use it: diagnostics, hover,
+completion, signature help, code actions, go to definition, references,
+rename and document symbols. Install the package in the project:
+
+```bash
+npm install --save-dev hinmil
+```
+
+and point your client at `hinmil-lsp --stdio`. **Neovim** (0.11 or later):
+
+```lua
+vim.lsp.config ('hinmil', {
+  cmd = { 'npx', 'hinmil-lsp', '--stdio' },
+  filetypes = { 'javascript', 'javascriptreact' },
+  root_markers = { 'hinmil.config.json', 'package.json' },
+})
+vim.lsp.enable ('hinmil')
+```
+
+**Helix** (`languages.toml`; keep your TypeScript server next to it):
+
+```toml
+[language-server.hinmil]
+command = "npx"
+args = ["hinmil-lsp", "--stdio"]
+
+[[language]]
+name = "javascript"
+language-servers = ["typescript-language-server", "hinmil"]
+```
+
+Vim (with vim-lsp or coc.nvim), Emacs (eglot or lsp-mode), Zed and Sublime
+Text take the same command. The project configuration
+(`hinmil.config.json`) works the same everywhere; the highlighting of
+annotations inside comments is a VS Code grammar and is not part of the
+server.
+
+The VS Code extension is what gets used every day; other clients are tested
+at the protocol level. If you run HinMil in another editor, an issue or pull
+request with your setup is very welcome.
 
 ---
 

@@ -13,6 +13,7 @@
 import type * as estree from '../estree';
 import {
   Type,
+  TRecord,
   TVar,
   tVar,
   tCon,
@@ -826,6 +827,10 @@ export function inferConditionalExpression(engine: InferenceEngine, node: estree
     const ra = engine.resolve(altType);
     const isUnionT = (t: Type): boolean => t.tag === 'TCon' && t.name === T_UNION;
     if ((isUnionT(rc) || isUnionT(ra)) && !structuralEquals(rc, ra)) return mergeUnion(rc, ra);
+    // The same holds per field of two records: `p == null ? { from: undefined }
+    // : p` with `p :: { from :: Date | Undefined }` is the wider record, not
+    // the literal's `{ from :: Undefined }`.
+    if (rc.tag === 'TRecord' && ra.tag === 'TRecord' && !structuralEquals(rc, ra)) return widenRecordBranches(rc, ra);
     return consType;
   } catch (e) {
     if (e instanceof UnificationError) {
@@ -838,6 +843,30 @@ export function inferConditionalExpression(engine: InferenceEngine, node: estree
     }
     throw e;
   }
+}
+
+/** The record type of a conditional whose branches unified: per field the
+ *  union when one branch's field is a member of the other's union (nested
+ *  records field by field).  Keeps the alias of a branch that already is
+ *  the result, so `c ? { … } : plan` still displays as `Plan`. */
+function widenRecordBranches(a: TRecord, b: TRecord): TRecord {
+  const isUnionT = (t: Type): boolean => t.tag === 'TCon' && t.name === T_UNION;
+  const fields: Record<string, Type> = {};
+  for (const key of Object.keys(a.fields)) {
+    const fa = a.fields[key];
+    const fb = b.fields[key];
+    if (fb === undefined || structuralEquals(fa, fb)) fields[key] = fa;
+    else if (isUnionT(fa) || isUnionT(fb)) fields[key] = mergeUnion(fa, fb);
+    else if (fa.tag === 'TRecord' && fb.tag === 'TRecord') fields[key] = widenRecordBranches(fa, fb);
+    else fields[key] = fa;
+  }
+  for (const key of Object.keys(b.fields)) {
+    if (!(key in fields)) fields[key] = b.fields[key];
+  }
+  const widened: TRecord = { tag: 'TRecord', fields, ...(a.rest ? { rest: a.rest } : {}) };
+  if (structuralEquals(widened, b)) return b;
+  if (structuralEquals(widened, a)) return a;
+  return widened;
 }
 
 function hasSpreadElementBelow(node: estree.ArrayExpression): boolean {

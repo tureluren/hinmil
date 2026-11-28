@@ -197,23 +197,30 @@ export function extractNullCheck(node: AstNode): { varName: string; isNullCheckP
 }
 
 /**
- * `obj.prop == null`, `obj.prop !== undefined`, `obj["prop"] != null` (an
- * identifier object, one level deep).  Same polarity as {@link extractNullCheck}.
+ * `obj.prop == null`, `obj.prop !== undefined`, `obj["prop"] != null`, and
+ * deeper paths on an identifier (`cfg.retry.delayMs == null`).  `path` is
+ * the chain of field names from `objName`; `propName` is its last field.
+ * Same polarity as {@link extractNullCheck}.
  */
 export function extractMemberNullCheck(
   node: AstNode,
-): { objName: string; propName: string; isNullCheckPositive: boolean } | null {
+): { objName: string; propName: string; path: string[]; isNullCheckPositive: boolean } | null {
   const isPositive = node.type === 'BinaryExpression'
     ? eqOpPolarity(node.operator as string)
     : null;
   if (isPositive === null) return null;
   return matchOperandPair(node, (member, nullish) => {
-    if (member.type !== 'MemberExpression' || member.object?.type !== 'Identifier'
-        || !isNullOrUndefined(nullish)) return null;
-    const propName = memberPropName(member as estree.MemberExpression);
-    return propName === null
-      ? null
-      : { objName: member.object.name as string, propName, isNullCheckPositive: isPositive };
+    if (member.type !== 'MemberExpression' || !isNullOrUndefined(nullish)) return null;
+    const path: string[] = [];
+    let cur: AstNode = member;
+    while (cur.type === 'MemberExpression') {
+      const propName = memberPropName(cur as unknown as estree.MemberExpression);
+      if (propName === null) return null;
+      path.unshift(propName);
+      cur = (cur as unknown as estree.MemberExpression).object as AstNode;
+    }
+    if (cur.type !== 'Identifier') return null;
+    return { objName: cur.name as string, propName: path[path.length - 1], path, isNullCheckPositive: isPositive };
   });
 }
 
@@ -339,17 +346,22 @@ function memberPropName(member: estree.MemberExpression): string | null {
 }
 
 /**
- * The record type of `objName` with Null/Undefined removed from field
- * `propName`, or null when `objName` is not a record with that nullable field.
+ * The record type of `objName` with Null/Undefined removed from the field at
+ * `path` (`["retry", "delayMs"]`: every record on the way is rebuilt), or
+ * null when the path does not run through records to a nullable field.
  */
-function recordWithNonNullField(subst: Substitution, env: TypeEnv, objName: string, propName: string): Type | null {
+function recordWithNonNullField(subst: Substitution, env: TypeEnv, objName: string, path: string[]): Type | null {
   const objScheme = env.lookup(objName);
   if (!objScheme) return null;
-  const obj = subst.apply(objScheme.type);
+  return recordWithNonNullPath(subst, subst.apply(objScheme.type), path);
+}
+
+function recordWithNonNullPath(subst: Substitution, obj: Type, path: string[]): Type | null {
+  const [propName, ...rest] = path;
   if (obj.tag !== 'TRecord' || !Object.prototype.hasOwnProperty.call(obj.fields, propName)) return null;
   const field = subst.apply(obj.fields[propName]);
-  const narrowed = removeNullUndefined(field);
-  if (structuralEquals(narrowed, field)) return null;
+  const narrowed = rest.length === 0 ? removeNullUndefined(field) : recordWithNonNullPath(subst, field, rest);
+  if (narrowed === null || structuralEquals(narrowed, field)) return null;
   return { ...obj, fields: { ...obj.fields, [propName]: narrowed } };
 }
 
@@ -854,10 +866,12 @@ export function computeNarrowedEnvs(
   //     exact path strips Null/Undefined (see `inferMemberExpression`).
   const memberNullCheck = extractMemberNullCheck(test);
   if (memberNullCheck) {
-    const narrowedObj = recordWithNonNullField(subst, env, memberNullCheck.objName, memberNullCheck.propName);
+    const narrowedObj = recordWithNonNullField(subst, env, memberNullCheck.objName, memberNullCheck.path);
+    // The path marker (non-record objects) stays one level deep: member
+    // access only consults it for `ident.prop`.
     const binding = narrowedObj
       ? { name: memberNullCheck.objName, scheme: mono(narrowedObj) }
-      : env.lookup(memberNullCheck.objName)
+      : memberNullCheck.path.length === 1 && env.lookup(memberNullCheck.objName)
         ? { name: nonNullMemberKey(memberNullCheck.objName, memberNullCheck.propName), scheme: mono(tBool) }
         : null;
     if (binding) {

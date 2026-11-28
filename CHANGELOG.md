@@ -3,6 +3,30 @@
 All notable changes to HinMil are listed here. The project follows
 [semantic versioning](https://semver.org/).
 
+## 0.3.0 — 2026-11-28
+
+### Added
+
+- The npm package has a second command, `hinmil-lsp`, that starts the
+  language server (`hinmil-lsp --stdio`), so editors other than VS Code
+  (Neovim, Helix, Vim, Emacs, Zed, …) can use HinMil through their LSP
+  client. The README has a section "Other editors" with setups.
+
+### Fixed
+
+- A conditional that picks a default object or a typed record now has the
+  wider record type. With `queue.retry :: { attempts :: Number | Undefined } | Null`,
+  `const retry = queue.retry == null ? { attempts: undefined } : queue.retry`
+  took the literal's `{ attempts :: Undefined }`, so
+  `retry.attempts == null ? 3 : retry.attempts` lost the `Number` and a
+  correct annotation was rejected. A filled-in default
+  (`{ attempts: 3 }`) also hid the optional field. Each field is now the
+  union of both branches, nested records field by field.
+- A null check on a nested field narrows that field in a conditional.
+  `settings.retry.backoffMs == null ? 1000 : settings.retry.backoffMs` was
+  still `Number | Undefined`; only `settings.backoffMs` narrowed. Every
+  record on the path is rebuilt, so a sibling field keeps its own type.
+
 ## 0.2.2 — 2026-11-26
 
 ### Fixed
